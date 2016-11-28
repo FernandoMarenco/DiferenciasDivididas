@@ -5,11 +5,14 @@
  */
 package mx.itson.DiferenciasDivididas.entidades;
 
+import java.awt.Color;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 import net.objecthunter.exp4j.Expression;
 import net.objecthunter.exp4j.ExpressionBuilder;
+import org.lsmp.djep.xjep.XJep;
+import org.nfunk.jep.Node;
 
 /**
  *
@@ -47,13 +50,13 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
             };
         }
         
-        //Columnas
+        //columnas
         tabla.addColumn("X");
         tabla.addColumn("Y");
         
         tb_tabulacion.setModel(tabla);
         
-        //Filas
+        //filas
         String[] datos = new String[elementos];
         for (int i = 0; i < elementos; i++) {
             tabla.addRow(datos);
@@ -79,8 +82,9 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         
         tb_procedimiento.setModel(tabla);
         
+        //filas
         String[] datos = new String[elementos];
-        for (int i = 1; i <= elementos; i++) {
+        for (int i = 0; i < elementos; i++) {
             tabla.addRow(datos);
         }
     }
@@ -88,37 +92,39 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
     //metodo para llenar el arregloX a partir de los datos ingresados en la tabla
     public void llenarX(String f) {
         TableModel tabla = tb_tabulacion.getModel();
-        x = new double[tabla.getRowCount()];
+        x = new double[tabla.getRowCount()]; //crear arregloX
         
         for (int i = 0; i < x.length; i++) {
-            x[i] = Double.parseDouble(tabla.getValueAt(i, 0).toString());
+            x[i] = Double.parseDouble(tabla.getValueAt(i, 0).toString()); //obtener el valor de la columna 'x'
             //System.out.println(x[i]);
         }
         
         llenarY(f);
         actualizarTablaProcedimiento();
+        txt_funcion.append(generarFuncion());
     }
     
+    /* Algotimo para aplicar el Método de Newton */
     //metodo para llenar el arregloY
     public void llenarY(String f) {
         TableModel tabla = tb_tabulacion.getModel();
-        y = new double[x.length][x.length];
+        y = new double[x.length][x.length]; //crear arregloY
         int contador = x.length-1; //contador para saber cuando guardar un 0
-        int separacion = 0; //separador que guarda los limites entre las x
+        int separacion = 0; //separador que guarda los limites entre las x que se deben tomar
         
-        for (int j = 0; j < x.length; j++) {
-            for (int i = 0; i < x.length; i++) {
-                if (j == 0) { //primer columna siempre guarda la y
+        for (int j = 0; j < x.length; j++) { //recorrer columnas
+            for (int i = 0; i < x.length; i++) { //recorrer filas
+                if (j == 0) { //primer columna siempre guarda la 'y'
                     if (checkb_ecuacion.isSelected()) {
-                        y[i][j] = funcion(f, x[i]); //si existe una funcion se guardara la 'y' evaluada en la funcion
+                        y[i][j] = funcion(f, x[i]); //si existe una funcion se guardara la 'y' evaluada en esa funcion
                     } else {
                         y[i][j] = Double.parseDouble(tabla.getValueAt(i, 1).toString()); //si no existe una funcion se guardara la 'y' introducida
                     }
                 } else if (j > 0 && i > contador){ //evaluar si sobrepasa el contador para no seguir haciendo operaciones
                     y[i][j] = 0;
-                } else {
-                    y[i][j] = p(y[i+1][j-1], y[i][j-1], x[i+separacion], x[i]);
-                }
+                } else { //realizar la operacion
+                    y[i][j] = p(y[i+1][j-1], y[i][j-1], x[i+separacion], x[i]); //en la parte de arriba: se obtiene la letra i de la columna j anterior
+                } //en la parte de abajo: se coloca el valor de la x de tal limite a tal limite dependiendo su separacion
                 
             }
             contador--;
@@ -126,27 +132,74 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         }
     }
     
-    //metodo para completar la tabla procedimiento
+    //metodo para introducir los datos a la tabla procedimiento
     public void actualizarTablaProcedimiento() {
         TableModel tabla1 = tb_tabulacion.getModel();
         TableModel tabla2 = tb_procedimiento.getModel();
         
+        //recorrer arregloY para establecer la matriz en la tabla
         for (int j = 0; j < x.length; j++) {
             for (int i = 0; i < x.length; i++) {
                 if (j == 0) {
                     if (checkb_ecuacion.isSelected()) {
-                        tabla1.setValueAt(y[i][j], i, 1);
+                        tabla1.setValueAt(y[i][j], i, 1); //tabla tabulacion segunda columna
                     }
                 } else {
-                    tabla2.setValueAt(y[i][j], i, j-1);
+                    tabla2.setValueAt(y[i][j], i, j-1); //se le resta 1 a la j porque ya se habia agregado la primer columna en otra tabla, esto es para que empieze bien con su indice
                 }
             }
         }
+    }
+    
+    //metodo que genera la ecuacion resultante
+    public String generarFuncion() {
+        String ecuacion = "";
+        for (int i = 0; i < x.length; i++) { //recorrer arregloY para obtener su primer fila
+            if (y[0][i] >= 0) { //condicion por si el primer numero es mayor a 0 escribirle un signo +
+                if (i == 0) { //pero si es el primer valor no escribe un signo
+                    ecuacion += redondearDecimales(y[0][i], 5);
+                } else {
+                    ecuacion += "+" + redondearDecimales(y[0][i], 5);
+                }
+            } else {
+                ecuacion += redondearDecimales(y[0][i], 5);
+            }
+            for (int j = 0; j < i; j++) {
+                ecuacion += "(x+" + redondearDecimales(x[j], 5) + ")"; //escribir las veces que necesita ser multiplicado el numero en curso
+            }
+        }
+        
+        ecuacion = simplificarEcuacion(ecuacion);
+        
+        return ecuacion;
+    }
+    
+    //metodo que simplifica una ecuacion
+    private String simplificarEcuacion(String ecuacion) {
+        try {
+            XJep jep = new XJep();
+            jep.addStandardFunctions();
+            jep.addStandardConstants();
+            jep.addComplex();
+            jep.setImplicitMul(true);
+            jep.setAllowUndeclared(true);
+            jep.setAllowAssignment(true);
+            
+            Node n = jep.parse(ecuacion);
+            Node sim = jep.simplify(n);
+            
+            ecuacion = jep.toString(sim);
 
+            //System.out.println(jep.toString(sim));
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        return ecuacion;
     }
     
     //formula para calcular la funcion con exp4j
-    private double funcion(String f, double x){
+    public double funcion(String f, double x) {
         Expression e = new ExpressionBuilder(f) //leer funciones
                 .variables("x") //se establece la variable x
                 .build() //se construye
@@ -157,8 +210,21 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
     }
     
     //formula que calcula el siguiente valor de la columna
-    private double p(double p1, double p0, double x1, double x0){
+    private double p(double p1, double p0, double x1, double x0) {
         double resultado = (p1 - p0) / (x1 - x0);
+        return resultado;
+    }
+    
+    //formula para redondear los decimales
+    private double redondearDecimales(double valorInicial, int numeroDecimales) {
+        double parteEntera, resultado;
+        
+        resultado = valorInicial;
+        parteEntera = Math.floor(resultado);
+        resultado=(resultado-parteEntera)*Math.pow(10, numeroDecimales);
+        resultado=Math.round(resultado);
+        resultado=(resultado/Math.pow(10, numeroDecimales))+parteEntera;
+        
         return resultado;
     }
     
@@ -173,12 +239,10 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
 
         jPanel1 = new javax.swing.JPanel();
         checkb_ecuacion = new javax.swing.JCheckBox();
-        txt_ecuacion = new javax.swing.JTextField();
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
         tb_tabulacion = new javax.swing.JTable();
-        txt_observaciones = new javax.swing.JTextField();
         jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
         jScrollPane3 = new javax.swing.JScrollPane();
@@ -193,14 +257,19 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         jLabel7 = new javax.swing.JLabel();
         txt_resultado = new javax.swing.JTextField();
         txt_valor = new javax.swing.JTextField();
+        btn_borrar = new javax.swing.JButton();
+        txt_ecuacion = new javax.swing.JTextField();
+        txt_observaciones = new javax.swing.JTextField();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("Interpolación numérica");
 
         jPanel1.setLayout(null);
 
         checkb_ecuacion.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
         checkb_ecuacion.setSelected(true);
         checkb_ecuacion.setText("Ecuación:");
+        checkb_ecuacion.setFocusable(false);
         checkb_ecuacion.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         checkb_ecuacion.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
         checkb_ecuacion.addActionListener(new java.awt.event.ActionListener() {
@@ -209,11 +278,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
             }
         });
         jPanel1.add(checkb_ecuacion);
-        checkb_ecuacion.setBounds(100, 70, 90, 20);
-
-        txt_ecuacion.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
-        jPanel1.add(txt_ecuacion);
-        txt_ecuacion.setBounds(190, 70, 220, 21);
+        checkb_ecuacion.setBounds(50, 70, 90, 20);
 
         jLabel1.setFont(new java.awt.Font("Arial Black", 0, 24)); // NOI18N
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -224,7 +289,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         jLabel2.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
         jLabel2.setText("Observaciones:");
         jPanel1.add(jLabel2);
-        jLabel2.setBounds(100, 100, 90, 20);
+        jLabel2.setBounds(50, 100, 90, 20);
 
         tb_tabulacion.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -238,10 +303,6 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
 
         jPanel1.add(jScrollPane1);
         jScrollPane1.setBounds(40, 170, 130, 140);
-
-        txt_observaciones.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
-        jPanel1.add(txt_observaciones);
-        txt_observaciones.setBounds(190, 100, 220, 21);
 
         jLabel3.setFont(new java.awt.Font("Arial Black", 0, 14)); // NOI18N
         jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -276,7 +337,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
             }
         });
         jPanel1.add(btn_aceptar);
-        btn_aceptar.setBounds(430, 70, 90, 50);
+        btn_aceptar.setBounds(380, 70, 90, 50);
 
         btn_calcular.setFont(new java.awt.Font("Arial Rounded MT Bold", 1, 12)); // NOI18N
         btn_calcular.setText("<html><P ALIGN=center>Calcular<br>función</html>");
@@ -289,6 +350,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         jPanel1.add(btn_calcular);
         btn_calcular.setBounds(30, 340, 120, 50);
 
+        txt_funcion.setEditable(false);
         txt_funcion.setColumns(20);
         txt_funcion.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
         txt_funcion.setLineWrap(true);
@@ -301,6 +363,11 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         btn_evaluar.setFont(new java.awt.Font("Arial Rounded MT Bold", 1, 12)); // NOI18N
         btn_evaluar.setText("<html><P ALIGN=center>Evaluar<br>función</html>");
         btn_evaluar.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btn_evaluar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_evaluarActionPerformed(evt);
+            }
+        });
         jPanel1.add(btn_evaluar);
         btn_evaluar.setBounds(430, 420, 100, 50);
 
@@ -320,6 +387,8 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         jPanel1.add(jLabel7);
         jLabel7.setBounds(90, 450, 70, 20);
 
+        txt_resultado.setEditable(false);
+        txt_resultado.setBackground(new java.awt.Color(255, 255, 255));
         txt_resultado.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
         jPanel1.add(txt_resultado);
         txt_resultado.setBounds(160, 450, 250, 21);
@@ -327,6 +396,31 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         txt_valor.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
         jPanel1.add(txt_valor);
         txt_valor.setBounds(130, 420, 280, 21);
+
+        btn_borrar.setFont(new java.awt.Font("Arial Rounded MT Bold", 1, 12)); // NOI18N
+        btn_borrar.setText("Borrar");
+        btn_borrar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_borrarActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btn_borrar);
+        btn_borrar.setBounds(480, 70, 90, 50);
+
+        txt_ecuacion.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
+        txt_ecuacion.setDisabledTextColor(new java.awt.Color(255, 255, 255));
+        jPanel1.add(txt_ecuacion);
+        txt_ecuacion.setBounds(140, 70, 220, 21);
+
+        txt_observaciones.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
+        txt_observaciones.setDisabledTextColor(new java.awt.Color(255, 255, 255));
+        txt_observaciones.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                txt_observacionesKeyTyped(evt);
+            }
+        });
+        jPanel1.add(txt_observaciones);
+        txt_observaciones.setBounds(140, 100, 220, 21);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -358,20 +452,79 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
             if (txt_ecuacion.getText().equals("") || txt_observaciones.getText().equals("")) {
                 JOptionPane.showMessageDialog(this, "Favor de llenar los campos");
             } else {
+                checkb_ecuacion.setEnabled(false);
+                txt_ecuacion.setEditable(false);
+                txt_ecuacion.setBackground(Color.WHITE);
+                txt_observaciones.setEditable(false);
+                txt_observaciones.setBackground(Color.WHITE);
+                btn_aceptar.setEnabled(false);
                 llenarCamposTabulacion(Integer.parseInt(txt_observaciones.getText()));
             }
         } else {
             if (txt_observaciones.getText().equals("")) {
                 JOptionPane.showMessageDialog(this, "Favor de llenar los campos");
             } else {
+                checkb_ecuacion.setEnabled(false);
+                txt_ecuacion.setEditable(false);
+                txt_ecuacion.setBackground(Color.WHITE);
+                txt_observaciones.setEditable(false);
+                txt_observaciones.setBackground(Color.WHITE);
+                btn_aceptar.setEnabled(false);
                 llenarCamposTabulacion(Integer.parseInt(txt_observaciones.getText()));
             }
         }
     }//GEN-LAST:event_btn_aceptarActionPerformed
 
     private void btn_calcularActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_calcularActionPerformed
-        llenarX(txt_ecuacion.getText());
+        try {
+            if (tb_tabulacion.getColumnCount() == 0) {
+                JOptionPane.showMessageDialog(this, "No hay datos registrados");
+            } else {
+                llenarX(txt_ecuacion.getText());
+                btn_calcular.setEnabled(false);
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Datos invalidos");
+        }
     }//GEN-LAST:event_btn_calcularActionPerformed
+
+    private void btn_borrarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_borrarActionPerformed
+        checkb_ecuacion.setEnabled(true);
+        txt_ecuacion.setEditable(true);
+        txt_ecuacion.setText("");
+        txt_observaciones.setEditable(true);
+        txt_observaciones.setText("");
+        x = null; y = null;
+        btn_aceptar.setEnabled(true);
+        btn_calcular.setEnabled(true);
+        DefaultTableModel t = new DefaultTableModel();
+        tb_tabulacion.setModel(t);
+        tb_procedimiento.setModel(t);
+        txt_funcion.setText("");
+        txt_valor.setText("");
+        txt_resultado.setText("");
+    }//GEN-LAST:event_btn_borrarActionPerformed
+
+    private void btn_evaluarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_evaluarActionPerformed
+        if (txt_funcion.getText().equals("")) {
+            JOptionPane.showMessageDialog(this, "No hay función para graficar");
+        } else if (txt_valor.getText().equals("")) {
+            JOptionPane.showMessageDialog(this, "Favor de llenar el formulario");
+        } else {
+            double resultado = funcion(txt_funcion.getText(), Double.parseDouble(txt_valor.getText()));
+            txt_resultado.setText(String.valueOf(resultado));
+        }
+    }//GEN-LAST:event_btn_evaluarActionPerformed
+
+    private void txt_observacionesKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txt_observacionesKeyTyped
+        char c = evt.getKeyChar();
+        if (!Character.isDigit(c)) { //pendiente
+            evt.consume();
+            System.out.println(c);
+            JOptionPane.showMessageDialog(this, "Solo se admiten numeros");
+            
+        }
+    }//GEN-LAST:event_txt_observacionesKeyTyped
 
     /**
      * @param args the command line arguments
@@ -393,6 +546,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btn_aceptar;
+    private javax.swing.JButton btn_borrar;
     private javax.swing.JButton btn_calcular;
     private javax.swing.JButton btn_evaluar;
     private javax.swing.JCheckBox checkb_ecuacion;

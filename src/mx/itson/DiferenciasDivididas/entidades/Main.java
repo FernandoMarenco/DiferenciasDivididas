@@ -48,7 +48,7 @@ public class Main {
             separacion++;
         }
         
-        
+        //imprimir arreglo Y
         for (int j = 0; j < x.length; j++) {
             for (int i = 0; i < x.length; i++) {
                 System.out.println(y[i][j]);
@@ -73,11 +73,7 @@ public class Main {
         }
         System.out.println(ecuacion);
         
-//        Expression e = new ExpressionBuilder(ecuacion)
-//                //.variables("x")
-//                .build();
-//        System.out.println(e.evaluate());
-        
+        //simplificar ecuacion con la libreria jep
         XJep jep = new XJep();
         jep.addStandardFunctions();
         jep.addStandardConstants();
@@ -86,18 +82,14 @@ public class Main {
         jep.setAllowUndeclared(true);
         jep.setAllowAssignment(true);
         
-        String ss = "x*x+2+0";
         try {
-           
             Node n = jep.parse(ecuacion);
-            Node p = jep.preprocess(n);
-            Node sim = jep.simplify(p);
+            Node sim = jep.simplify(n);
 
             System.out.println(jep.toString(sim));
 
-            
         } catch (Exception ex) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            ex.printStackTrace();
         }
     }
     
