@@ -5,10 +5,15 @@
  */
 package mx.itson.DiferenciasDivididas.entidades;
 
+import com.sun.glass.events.KeyEvent;
 import java.awt.Color;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
+import mx.itson.DiferenciasDivididas.JfreeChart.FormularioChart;
+import mx.itson.DiferenciasDivididas.JfreeChart.GraficasLineal;
 import net.objecthunter.exp4j.Expression;
 import net.objecthunter.exp4j.ExpressionBuilder;
 import org.lsmp.djep.xjep.XJep;
@@ -31,6 +36,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
     //valores de entrada
     double[] x = null;
     double[][] y = null;
+    double[][] grafica = null, tabulacion = null;
 
     //metodo para llenar la tabla tabulacion con campos vacios
     public void llenarCamposTabulacion(int elementos) {
@@ -165,7 +171,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
                 ecuacion += redondearDecimales(y[0][i], 5);
             }
             for (int j = 0; j < i; j++) {
-                ecuacion += "(x+" + redondearDecimales(x[j], 5) + ")"; //escribir las veces que necesita ser multiplicado el numero en curso
+                ecuacion += "(x-" + redondearDecimales(x[j], 5) + ")"; //escribir las veces que necesita ser multiplicado el numero en curso
             }
         }
         
@@ -216,16 +222,56 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
     }
     
     //formula para redondear los decimales
-    private double redondearDecimales(double valorInicial, int numeroDecimales) {
-        double parteEntera, resultado;
-        
-        resultado = valorInicial;
-        parteEntera = Math.floor(resultado);
-        resultado=(resultado-parteEntera)*Math.pow(10, numeroDecimales);
-        resultado=Math.round(resultado);
-        resultado=(resultado/Math.pow(10, numeroDecimales))+parteEntera;
+    public double redondearDecimales(double valor, int decimales) {
+        double resultado = valor;
+        BigDecimal big = new BigDecimal(resultado);
+        big = big.setScale(decimales, RoundingMode.HALF_UP);
+        resultado = Double.parseDouble(big.toString());
         
         return resultado;
+    }
+    
+    //metodo para generar los puntos de la grafica
+    public void generarPuntosGrafica(String funcion) {
+        grafica = new double[201][2]; //guardar tabulacion de la grafica desde -10 hasta 10
+        double numerador = -10;
+        for (int j = 0; j < 2; j++) { //recorrer la matriz grafica
+            for (int i = 0; i < 201; i++) {
+                if (j == 0) {
+                    grafica[i][j] = redondearDecimales(numerador, 2); //redondear el numerador
+                    numerador+=0.1;
+                }
+                else {
+                    grafica[i][j] = funcion(funcion, redondearDecimales(numerador, 4)); //redondear el numerador y aplicar la funcion f(x)
+                    numerador+=0.1;
+                }
+                //System.out.println("grafica: "+grafica[i][j]);
+            }
+            numerador = -10;
+        }
+        
+        //generar la tabulacion principal
+        tabulacion = new double[x.length][2];
+        for (int j = 0; j < 2; j++) {
+            for (int i = 0; i < x.length; i++) {
+                if (j == 0) {
+                    tabulacion[i][j] = x[i];
+                } else {
+                    tabulacion[i][j] = y[i][0];
+                }
+                System.out.println(tabulacion[i][j]);
+            }
+        }
+        
+    }
+    
+    //metodo para abrir el frame de la grafica y graficar
+    public void llamarFormularioChart(double[][] tabulacion, int l1, double[][] grafica, int l2) {
+        FormularioChart ventana = new FormularioChart();
+        ventana.setVisible(true);
+
+        GraficasLineal g = new GraficasLineal();
+        g.Graficar(tabulacion, l1, grafica, l2);
     }
     
     /**
@@ -260,12 +306,15 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         btn_borrar = new javax.swing.JButton();
         txt_ecuacion = new javax.swing.JTextField();
         txt_observaciones = new javax.swing.JTextField();
+        btn_graficar = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Interpolación numérica");
 
+        jPanel1.setBackground(new java.awt.Color(177, 237, 237));
         jPanel1.setLayout(null);
 
+        checkb_ecuacion.setBackground(new java.awt.Color(177, 237, 237));
         checkb_ecuacion.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
         checkb_ecuacion.setSelected(true);
         checkb_ecuacion.setText("Ecuación:");
@@ -329,8 +378,12 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         jPanel1.add(jScrollPane3);
         jScrollPane3.setBounds(190, 170, 390, 140);
 
+        btn_aceptar.setBackground(new java.awt.Color(0, 204, 204));
         btn_aceptar.setFont(new java.awt.Font("Arial Rounded MT Bold", 1, 12)); // NOI18N
         btn_aceptar.setText("Aceptar");
+        btn_aceptar.setBorder(javax.swing.BorderFactory.createMatteBorder(3, 3, 3, 3, new java.awt.Color(0, 153, 153)));
+        btn_aceptar.setContentAreaFilled(false);
+        btn_aceptar.setOpaque(true);
         btn_aceptar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btn_aceptarActionPerformed(evt);
@@ -339,16 +392,20 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         jPanel1.add(btn_aceptar);
         btn_aceptar.setBounds(380, 70, 90, 50);
 
+        btn_calcular.setBackground(new java.awt.Color(0, 204, 204));
         btn_calcular.setFont(new java.awt.Font("Arial Rounded MT Bold", 1, 12)); // NOI18N
         btn_calcular.setText("<html><P ALIGN=center>Calcular<br>función</html>");
+        btn_calcular.setBorder(javax.swing.BorderFactory.createMatteBorder(3, 3, 3, 3, new java.awt.Color(0, 153, 153)));
+        btn_calcular.setContentAreaFilled(false);
         btn_calcular.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btn_calcular.setOpaque(true);
         btn_calcular.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btn_calcularActionPerformed(evt);
             }
         });
         jPanel1.add(btn_calcular);
-        btn_calcular.setBounds(30, 340, 120, 50);
+        btn_calcular.setBounds(30, 330, 120, 70);
 
         txt_funcion.setEditable(false);
         txt_funcion.setColumns(20);
@@ -360,16 +417,20 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         jPanel1.add(jScrollPane2);
         jScrollPane2.setBounds(170, 350, 420, 50);
 
+        btn_evaluar.setBackground(new java.awt.Color(0, 204, 204));
         btn_evaluar.setFont(new java.awt.Font("Arial Rounded MT Bold", 1, 12)); // NOI18N
         btn_evaluar.setText("<html><P ALIGN=center>Evaluar<br>función</html>");
+        btn_evaluar.setBorder(javax.swing.BorderFactory.createMatteBorder(3, 3, 3, 3, new java.awt.Color(0, 153, 153)));
+        btn_evaluar.setContentAreaFilled(false);
         btn_evaluar.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btn_evaluar.setOpaque(true);
         btn_evaluar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btn_evaluarActionPerformed(evt);
             }
         });
         jPanel1.add(btn_evaluar);
-        btn_evaluar.setBounds(430, 420, 100, 50);
+        btn_evaluar.setBounds(370, 420, 100, 50);
 
         jLabel5.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
         jLabel5.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -380,25 +441,34 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         jLabel6.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
         jLabel6.setText("Valor:");
         jPanel1.add(jLabel6);
-        jLabel6.setBounds(90, 420, 40, 20);
+        jLabel6.setBounds(40, 420, 40, 20);
 
         jLabel7.setFont(new java.awt.Font("Arial", 0, 12)); // NOI18N
         jLabel7.setText("Resultado:");
         jPanel1.add(jLabel7);
-        jLabel7.setBounds(90, 450, 70, 20);
+        jLabel7.setBounds(40, 450, 70, 20);
 
         txt_resultado.setEditable(false);
         txt_resultado.setBackground(new java.awt.Color(255, 255, 255));
         txt_resultado.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
         jPanel1.add(txt_resultado);
-        txt_resultado.setBounds(160, 450, 250, 21);
+        txt_resultado.setBounds(110, 450, 240, 21);
 
         txt_valor.setFont(new java.awt.Font("Arial", 1, 12)); // NOI18N
+        txt_valor.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                txt_valorKeyTyped(evt);
+            }
+        });
         jPanel1.add(txt_valor);
-        txt_valor.setBounds(130, 420, 280, 21);
+        txt_valor.setBounds(80, 420, 270, 21);
 
+        btn_borrar.setBackground(new java.awt.Color(0, 204, 204));
         btn_borrar.setFont(new java.awt.Font("Arial Rounded MT Bold", 1, 12)); // NOI18N
         btn_borrar.setText("Borrar");
+        btn_borrar.setBorder(javax.swing.BorderFactory.createMatteBorder(3, 3, 3, 3, new java.awt.Color(0, 153, 153)));
+        btn_borrar.setContentAreaFilled(false);
+        btn_borrar.setOpaque(true);
         btn_borrar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btn_borrarActionPerformed(evt);
@@ -422,6 +492,21 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         jPanel1.add(txt_observaciones);
         txt_observaciones.setBounds(140, 100, 220, 21);
 
+        btn_graficar.setBackground(new java.awt.Color(0, 204, 204));
+        btn_graficar.setFont(new java.awt.Font("Arial Rounded MT Bold", 1, 12)); // NOI18N
+        btn_graficar.setText("Graficar");
+        btn_graficar.setBorder(javax.swing.BorderFactory.createMatteBorder(3, 3, 3, 3, new java.awt.Color(0, 153, 153)));
+        btn_graficar.setContentAreaFilled(false);
+        btn_graficar.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        btn_graficar.setOpaque(true);
+        btn_graficar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_graficarActionPerformed(evt);
+            }
+        });
+        jPanel1.add(btn_graficar);
+        btn_graficar.setBounds(480, 420, 100, 50);
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -430,9 +515,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 490, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 0, Short.MAX_VALUE))
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 490, Short.MAX_VALUE)
         );
 
         pack();
@@ -454,9 +537,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
             } else {
                 checkb_ecuacion.setEnabled(false);
                 txt_ecuacion.setEditable(false);
-                txt_ecuacion.setBackground(Color.WHITE);
                 txt_observaciones.setEditable(false);
-                txt_observaciones.setBackground(Color.WHITE);
                 btn_aceptar.setEnabled(false);
                 llenarCamposTabulacion(Integer.parseInt(txt_observaciones.getText()));
             }
@@ -466,9 +547,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
             } else {
                 checkb_ecuacion.setEnabled(false);
                 txt_ecuacion.setEditable(false);
-                txt_ecuacion.setBackground(Color.WHITE);
                 txt_observaciones.setEditable(false);
-                txt_observaciones.setBackground(Color.WHITE);
                 btn_aceptar.setEnabled(false);
                 llenarCamposTabulacion(Integer.parseInt(txt_observaciones.getText()));
             }
@@ -518,13 +597,28 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
 
     private void txt_observacionesKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txt_observacionesKeyTyped
         char c = evt.getKeyChar();
-        if (!Character.isDigit(c)) { //pendiente
+        if (!Character.isDigit(c) || c == KeyEvent.VK_BACKSPACE || c == KeyEvent.VK_SPACE) {
             evt.consume();
-            System.out.println(c);
-            JOptionPane.showMessageDialog(this, "Solo se admiten numeros");
-            
         }
     }//GEN-LAST:event_txt_observacionesKeyTyped
+
+    private void txt_valorKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txt_valorKeyTyped
+        char c = evt.getKeyChar();
+        if (!Character.isDigit(c) || c == KeyEvent.VK_BACKSPACE || c == KeyEvent.VK_SPACE) {
+            evt.consume();
+        }
+    }//GEN-LAST:event_txt_valorKeyTyped
+
+    private void btn_graficarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_graficarActionPerformed
+        if (!txt_funcion.getText().equals("")) {
+            //generar matriz graficar
+            generarPuntosGrafica(txt_funcion.getText());
+            llamarFormularioChart(tabulacion, tabulacion.length, grafica, grafica.length);
+        }
+        else {
+            JOptionPane.showMessageDialog(this, "No hay función para graficar");
+        }
+    }//GEN-LAST:event_btn_graficarActionPerformed
 
     /**
      * @param args the command line arguments
@@ -549,6 +643,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
     private javax.swing.JButton btn_borrar;
     private javax.swing.JButton btn_calcular;
     private javax.swing.JButton btn_evaluar;
+    private javax.swing.JButton btn_graficar;
     private javax.swing.JCheckBox checkb_ecuacion;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
