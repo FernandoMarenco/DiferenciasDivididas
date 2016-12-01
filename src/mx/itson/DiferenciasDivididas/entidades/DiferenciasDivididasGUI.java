@@ -259,7 +259,7 @@ public class DiferenciasDivididasGUI extends javax.swing.JFrame {
                 } else {
                     tabulacion[i][j] = y[i][0];
                 }
-                System.out.println(tabulacion[i][j]);
+                //System.out.println(tabulacion[i][j]);
             }
         }
         
